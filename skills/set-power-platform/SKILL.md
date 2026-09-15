@@ -2,7 +2,7 @@
 name: set-power-platform
 description: "Initialise the current folder as a Power Platform / Dynamics 365 CE repository: agent instructions, development standards per technology, solution sync script and the folder layout. Run once, at the start of a project."
 disable-model-invocation: true
-allowed-tools: Bash, Read, Grep, Glob, AskUserQuestion
+allowed-tools: Bash(pwsh -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/scaffold.ps1" *)
 ---
 
 # Set up a Power Platform repository
@@ -28,7 +28,11 @@ Run these checks and report what you found before asking anything:
 
 ## 2. Collect the six values
 
-Ask for all six in one round, with `AskUserQuestion` where options genuinely help and plain questions otherwise. **Never invent a value and never derive one silently from the folder name** — a wrong prefix cannot be undone later.
+Ask for all six in a single plain-text message: a numbered list, one line per value, each with its rule. Then stop and wait for the reply.
+
+**Do not use `AskUserQuestion` to collect them.** That tool takes at most 4 questions and requires 2 to 4 predefined options per question, so it cannot collect free text and a six-value round fails outright. Use it only for the closed choices in this skill: the go-ahead in step 3 and which platform steps to run in step 5.
+
+**Never invent a value and never derive one silently from the folder name** — a wrong prefix cannot be undone later.
 
 | Value | What it is | Rules |
 | --- | --- | --- |
@@ -61,7 +65,7 @@ The script refuses to overwrite by default and fails if any `{{token}}` survives
 
 Offer these one at a time, and run only what the user accepts. Report the real output of each.
 
-1. **Authenticate against DEV**: `pac auth create --environment <DEV environment url>`. Ask for the url; never guess it.
+1. **Authenticate against DEV**: `pac auth create --environment <DEV environment url>`. Ask for the url as plain text and wait for it — `AskUserQuestion` cannot collect it, for the reason given in step 2. Never guess it.
 2. **Name the environment**: `pac org who`. The standards treat any unverified environment as production, so this is worth running even when auth already existed.
 3. **Initialise git**: `git init` plus a first commit of the scaffold, if the folder is not a repository yet.
 
