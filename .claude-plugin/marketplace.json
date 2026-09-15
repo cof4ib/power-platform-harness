@@ -1,0 +1,23 @@
+{
+  "name": "power-platform-harness",
+  "owner": {
+    "name": "Fran",
+    "url": "https://github.com/cof4ib"
+  },
+  "description": "Development standards and repository scaffolding for Power Platform / Dynamics 365 CE projects, as an installable Claude Code plugin.",
+  "plugins": [
+    {
+      "name": "power-platform-harness",
+      "source": "./",
+      "description": "Initialises a Power Platform / Dynamics 365 CE repository with agent instructions, per-technology development standards, a solution sync script and the expected folder layout.",
+      "category": "engineering",
+      "keywords": [
+        "power-platform",
+        "dynamics-365",
+        "dataverse",
+        "alm",
+        "scaffolding"
+      ]
+    }
+  ]
+}

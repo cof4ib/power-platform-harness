@@ -1,0 +1,35 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+TestResults/
+*.trx
+
+# NuGet
+packages/
+*.nupkg
+
+# Node / PCF
+node_modules/
+out/
+generated/
+*.tsbuildinfo
+
+# Dataverse solution artifacts: only the unpacked solution is committed
+src/Solutions/**/*.zip
+
+# Secrets and environment configuration: never committed
+.env
+*.env
+secrets.json
+appsettings.*.local.json
+
+# Local agent and tooling state
+.claude/settings.local.json
+.build-cache/
+
+# OS
+.DS_Store
+Thumbs.db
