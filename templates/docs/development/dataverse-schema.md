@@ -4,7 +4,7 @@ Read `docs/agents/development-standards.md` first. This file only adds what is s
 
 ## Extend before you create
 
-- Do not create a custom table when a standard table already models the concept. In Customer Service and Field Service that means Account, Contact, Case, Knowledge Article, Entitlement, Work Order, Bookable Resource, Bookable Resource Booking, Resource Requirement and their siblings.
+- Do not create a custom table when a standard table already models the concept.
 - Extend the standard table with custom columns first. A custom clone loses the out-of-the-box engine attached to the standard table — scheduling, SLA, entitlement, routing — and that engine is usually the reason the platform was chosen.
 - Every new table requires an ADR in `docs/adr/` naming the standard table that was considered and why it does not fit.
 - Inspect the real metadata before deciding (`describe` via the Dataverse MCP, or `pac`). Never assume a standard table does or does not already have the column you need.

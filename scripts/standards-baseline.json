@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "description": "Every version, framework and layout decision the shipped standards assert. discover.ps1 compares an existing repository against this list and reports the differences, so adopting the harness never silently imposes a stack the project does not use. Each entry records where the assertion lives so a stale baseline is detectable: discover.ps1 reports an entry whose assertedText no longer appears in assertedIn.",
+  "maintenance": "Changing a version or a framework in templates/ means updating the matching entry here in the same commit.",
+  "assertions": [
+    {
+      "id": "plugins.targetFramework",
+      "kind": "stack",
+      "topic": "C# plugin target framework",
+      "standard": "net462",
+      "standardLabel": ".NET Framework 4.6.2",
+      "assertedIn": "templates/docs/development/csharp-plugins.md",
+      "targetFile": "docs/development/csharp-plugins.md",
+      "assertedText": "Target .NET Framework 4.6.2.",
+      "guidance": "Dataverse sandbox plug-ins must target the .NET Framework version the platform supports. If the project targets something else, that is the project's reality: record it and do not retarget existing assemblies as part of adopting the harness."
+    },
+    {
+      "id": "plugins.sdkStyle",
+      "kind": "stack",
+      "topic": "C# project style",
+      "standard": "sdk-style",
+      "standardLabel": "SDK-style projects, deployed as Dataverse .nupkg plug-in packages",
+      "assertedIn": "templates/docs/development/csharp-plugins.md",
+      "targetFile": "docs/development/csharp-plugins.md",
+      "assertedText": "Use SDK-style projects and deploy as Dataverse `.nupkg` plug-in packages.",
+      "guidance": "Legacy non-SDK csproj files still build. Converting them is a migration with its own risk, not a side effect of installing standards."
+    },
+    {
+      "id": "plugins.strongNaming",
+      "kind": "stack",
+      "topic": "Assembly strong naming",
+      "standard": "unsigned",
+      "standardLabel": "Assemblies are not strong-named",
+      "assertedIn": "templates/docs/development/csharp-plugins.md",
+      "targetFile": "docs/development/csharp-plugins.md",
+      "assertedText": "Do not strong-name assemblies.",
+      "guidance": "A signed assembly already registered in Dataverse cannot be unsigned without re-registering every step. If the project signs, the standard has to follow the project."
+    },
+    {
+      "id": "plugins.test.xunit",
+      "kind": "stack",
+      "topic": "Plugin unit test framework",
+      "standard": "xunit 2.9.3",
+      "standardLabel": "xUnit 2.9.3",
+      "assertedIn": "templates/docs/development/csharp-plugins.md",
+      "targetFile": "docs/development/csharp-plugins.md",
+      "assertedText": "xUnit 2.9.3",
+      "package": "xunit",
+      "guidance": "A project on NUnit or MSTest, or on a different xUnit version, keeps it. Two test frameworks in one repository is worse than an out-of-date standard."
+    },
+    {
+      "id": "plugins.test.fakeXrmEasyPlugins",
+      "kind": "stack",
+      "topic": "Dataverse test double",
+      "standard": "FakeXrmEasy.Plugins.v9 2.9.4",
+      "standardLabel": "FakeXrmEasy.Plugins.v9 2.9.4",
+      "assertedIn": "templates/docs/development/csharp-plugins.md",
+      "targetFile": "docs/development/csharp-plugins.md",
+      "assertedText": "FakeXrmEasy.Plugins.v9 2.9.4",
+      "package": "FakeXrmEasy.Plugins.v9",
+      "guidance": "FakeXrmEasy 2.x requires a licence key at runtime; 1.x does not. A project on 1.x is a deliberate choice, not an oversight."
+    },
+    {
+      "id": "plugins.test.fakeXrmEasyMessages",
+      "kind": "stack",
+      "topic": "Dataverse message simulation",
+      "standard": "FakeXrmEasy.Messages.v9 2.9.4",
+      "standardLabel": "FakeXrmEasy.Messages.v9 2.9.4",
+      "assertedIn": "templates/docs/development/csharp-plugins.md",
+      "targetFile": "docs/development/csharp-plugins.md",
+      "assertedText": "FakeXrmEasy.Messages.v9 2.9.4",
+      "package": "FakeXrmEasy.Messages.v9",
+      "optional": true,
+      "guidance": "Only relevant where the repository already simulates messages or Custom APIs in tests."
+    },
+    {
+      "id": "pcf.controlType",
+      "kind": "stack",
+      "topic": "PCF control type",
+      "standard": "virtual",
+      "standardLabel": "React virtual controls (control-type=\"virtual\") with platform libraries",
+      "assertedIn": "templates/docs/development/pcf.md",
+      "targetFile": "docs/development/pcf.md",
+      "assertedText": "Use React PCF virtual controls (`control-type=\"virtual\"`) with platform libraries.",
+      "guidance": "Standard controls that bundle their own React work today. Migrating them to virtual is a change with import-time risk; it does not belong in a scaffolding step."
+    },
+    {
+      "id": "pcf.platformLibrary.react",
+      "kind": "stack",
+      "topic": "PCF React platform library",
+      "standard": "16.14.0",
+      "standardLabel": "React platform library 16.14.0",
+      "assertedIn": "templates/docs/development/pcf.md",
+      "targetFile": "docs/development/pcf.md",
+      "assertedText": "React: platform library `16.14.0`.",
+      "platformLibrary": "React",
+      "guidance": "The version in ControlManifest.Input.xml is what the environment actually loads. The standard must state the version the repository ships, never a newer one."
+    },
+    {
+      "id": "pcf.platformLibrary.fluent",
+      "kind": "stack",
+      "topic": "PCF Fluent UI platform library",
+      "standard": "9.46.2",
+      "standardLabel": "Fluent UI v9 platform library 9.46.2",
+      "assertedIn": "templates/docs/development/pcf.md",
+      "targetFile": "docs/development/pcf.md",
+      "assertedText": "Fluent UI: v9 via platform library `9.46.2`",
+      "platformLibrary": "Fluent",
+      "guidance": "A Fluent platform-library version higher than the one the target environment supports fails solution import. Record the repository's version, not the standard's."
+    },
+    {
+      "id": "pcf.test",
+      "kind": "stack",
+      "topic": "PCF test framework",
+      "standard": "vitest",
+      "standardLabel": "Vitest + Testing Library",
+      "assertedIn": "templates/docs/development/pcf.md",
+      "targetFile": "docs/development/pcf.md",
+      "assertedText": "Tests: Vitest + Testing Library.",
+      "packages": ["vitest", "jest"],
+      "guidance": "A repository already on Jest keeps Jest. Running both runners in one repository doubles the configuration surface for no gain."
+    },
+    {
+      "id": "javascript.language",
+      "kind": "stack",
+      "topic": "Web resource language level",
+      "standard": "es2020-no-build",
+      "standardLabel": "Plain ES2020 JavaScript, no build or bundling step",
+      "assertedIn": "templates/docs/development/javascript.md",
+      "targetFile": "docs/development/javascript.md",
+      "assertedText": "Author web resources as plain ES2020 JavaScript.",
+      "guidance": "Web resources authored in TypeScript, or bundled, contradict this rule end to end: the file committed is no longer the file deployed. Decide which one the project follows before the first change, not during it."
+    },
+    {
+      "id": "javascript.test",
+      "kind": "stack",
+      "topic": "Web resource test framework",
+      "standard": "vitest+jsdom",
+      "standardLabel": "Vitest with the jsdom environment",
+      "assertedIn": "templates/docs/development/javascript.md",
+      "targetFile": "docs/development/javascript.md",
+      "assertedText": "Tests: Vitest with the `jsdom` environment.",
+      "packages": ["vitest", "jest"],
+      "guidance": "Same rule as PCF: one runner per repository."
+    },
+    {
+      "id": "javascript.lint",
+      "kind": "stack",
+      "topic": "Lint configuration",
+      "standard": "eslint9-flat",
+      "standardLabel": "ESLint 9 with flat config",
+      "assertedIn": "templates/docs/development/javascript.md",
+      "targetFile": "docs/development/javascript.md",
+      "assertedText": "Lint: ESLint 9 (flat config), shared with the PCF projects.",
+      "packages": ["eslint"],
+      "guidance": "ESLint 8 with .eslintrc is not a defect. Migrating to flat config is its own task."
+    },
+    {
+      "id": "alm.solutionMirrorPath",
+      "kind": "layout",
+      "topic": "Committed solution mirror",
+      "standard": "src/Solutions/<SolutionName>",
+      "standardLabel": "The unpacked solution lives in src/Solutions/<SolutionName>",
+      "assertedIn": "templates/docs/development/solutions-alm.md",
+      "targetFile": "docs/development/solutions-alm.md",
+      "assertedText": "is its committed mirror, produced by `pac solution export` + `pac solution unpack`",
+      "guidance": "scripts/sync-solution.ps1 resolves this path from -SolutionName and will export into the wrong place if the repository unpacks somewhere else. Reconcile the path before the script is used, or do not install it."
+    },
+    {
+      "id": "alm.singleSolution",
+      "kind": "layout",
+      "topic": "Solution strategy",
+      "standard": "one-unmanaged-solution",
+      "standardLabel": "One unmanaged solution in DEV",
+      "assertedIn": "templates/docs/development/solutions-alm.md",
+      "targetFile": "docs/development/solutions-alm.md",
+      "assertedText": "Split only when a part genuinely needs to deploy on its own schedule",
+      "guidance": "A repository that already ships several solutions is not violating the standard retroactively. Record which solution the harness values describe, and which others exist."
+    },
+    {
+      "id": "layout.folders",
+      "kind": "layout",
+      "topic": "Repository layout",
+      "standard": "src/{Plugins,CustomAPIs,WebResources,Solutions}, tests/{Plugins,CustomAPIs}, docs/adr",
+      "standardLabel": "The folder layout the standards reference by path",
+      "assertedIn": "scripts/scaffold.ps1",
+      "assertedText": "$keepDirectories",
+      "guidance": "Creating this layout next to a different existing one leaves two conventions in one repository. In an existing project, create only what is missing and only where it matches what is already there."
+    }
+  ]
+}
