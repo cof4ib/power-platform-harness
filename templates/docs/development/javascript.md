@@ -17,8 +17,8 @@ Read `docs/agents/development-standards.md` first. This file only adds what is s
 - Solution packaging MUST exclude `*.test.js`; only web resource files are deployed.
 - Each web resource MUST use the Revealing Module Pattern, implemented with an IIFE and assigned directly to the global `{{project_name}}` namespace.
 ```js
-globalThis.`{{project_name}}` = globalThis.`{{project_name}}` || {}; 
-globalThis.`{{project_name}}`.<TableOrDomain>Form = (function () {
+globalThis.{{project_name}} = globalThis.{{project_name}} || {}; 
+globalThis.{{project_name}}.<TableOrDomain>Form = (function () {
   "use strict"; 
 
   // Private implementation 
