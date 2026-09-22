@@ -101,4 +101,3 @@ Read the file for each technology the change touches, before writing.
 | Dataverse schema | `docs/development/dataverse-schema.md` | Ready |
 | Solutions & ALM | `docs/development/solutions-alm.md` | Ready |
 | Model-driven app configuration | `docs/development/model-driven-apps.md` | Pending — file does not exist yet |
-| Canvas apps | — | Out of scope for this project |

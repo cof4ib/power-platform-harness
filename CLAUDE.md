@@ -12,9 +12,14 @@ It is not a Power Platform project: nothing here is deployed to Dataverse. The s
 | --- | --- |
 | `.claude-plugin/plugin.json` | Plugin manifest. Lists the skills explicitly |
 | `.claude-plugin/marketplace.json` | Makes this repo its own single-plugin marketplace |
-| `skills/set-power-platform/SKILL.md` | The skill: collects values, runs the scaffold, reports |
+| `skills/set-power-platform/SKILL.md` | The skill: discovers, collects what discovery could not, runs the scaffold, reports |
+| `scripts/discover.ps1` | Read-only inspection of a repository and its environment. Emits JSON. Writes nothing |
+| `scripts/standards-baseline.json` | Every version, framework and layout decision the templates assert, and where each is asserted |
 | `scripts/scaffold.ps1` | Deterministic copy + token substitution. The only thing that writes files |
 | `templates/` | Content shipped verbatim into every scaffolded project |
+
+The split matters: `discover.ps1` never writes, `scaffold.ps1` never asks, and the skill never
+generates content that belongs in a template. A change that blurs one of those is the wrong change.
 
 ## Rules for changing `templates/`
 
@@ -27,6 +32,21 @@ It is not a Power Platform project: nothing here is deployed to Dataverse. The s
   `templates/docs/development/` without adding its row to that index leaves the file unreachable.
 - Keep the template free of anything project-specific or client-specific. This repository is
   public: no environment urls, tenant ids, client names, solution names or real prefixes.
+- A version, framework or layout path asserted in `templates/docs/development/*.md` is also
+  recorded in `scripts/standards-baseline.json`, which is what lets an existing project be
+  compared against the standards instead of being retargeted to them. Change both in the same
+  commit: `discover.ps1` reports an entry whose `assertedText` no longer appears in the file it
+  points at, and a stale baseline silently stops reporting real deviations.
+
+## Adapting to an existing project, not the other way round
+
+The harness must never impose a version, framework, test runner or folder layout that a project
+does not already use. That rule lives in three places and all three have to hold:
+
+- `discover.ps1` reports what the project actually uses, with the evidence.
+- `scaffold.ps1 -SkipExisting` writes only missing files, and `-SkipLayout` suppresses the folder
+  layout. Neither ever edits a file the project already has.
+- The skill reconciles the *generated* docs in the target repository, never `templates/` here.
 
 ## Tokens
 
@@ -49,10 +69,16 @@ added to a template alone breaks every run.
 
 ## Verify a change
 
-Run all three before committing:
+Run all of these before committing:
 
 ```powershell
 claude plugin validate .
+
+# Discovery must survive a repository it was not designed for, and must report nothing stale.
+# standards.staleBaseline is empty when the baseline still matches templates/.
+pwsh -NoProfile -File ./scripts/discover.ps1 -SkipEnvironment |
+    ConvertFrom-Json |
+    ForEach-Object { $_.standards.staleBaseline; $_.recommendation.mode }
 
 # Scaffold into a throwaway folder and inspect the result
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "pph-$([guid]::NewGuid())"
@@ -64,7 +90,15 @@ pwsh -NoProfile -File ./scripts/scaffold.ps1 -ProjectName Northwind `
 pwsh -NoProfile -File ./scripts/scaffold.ps1 -ProjectName Northwind `
     -PublisherName 'Northwind Consulting' -PublisherPrefix nwc -SolutionName NorthwindCore `
     -RootNamespace Northwind -ProjectDescription 'Test scaffold.' -TargetPath $tmp
+
+# The same run with -SkipExisting must add nothing and abort nothing
+pwsh -NoProfile -File ./scripts/scaffold.ps1 -ProjectName Northwind `
+    -PublisherName 'Northwind Consulting' -PublisherPrefix nwc -SolutionName NorthwindCore `
+    -RootNamespace Northwind -ProjectDescription 'Test scaffold.' -TargetPath $tmp -SkipExisting
 ```
+
+Both scripts must also run under Windows PowerShell 5.1, which the generated projects may be
+stuck on: no `??`, no ternary, no `ForEach-Object -Parallel`, and no `ProcessStartInfo.ArgumentList`.
 
 Then bump `version` in `.claude-plugin/plugin.json`: installed plugins update by version.
 

@@ -11,6 +11,16 @@
     collision first and aborts without touching the working tree. Use -DryRun to print the
     resulting tree without writing anything.
 
+    Three ways to handle a folder that is not empty:
+      - default:      abort and list the collisions, writing nothing.
+      - -SkipExisting: write what is missing, leave every existing file untouched. This is the
+                       mode for an existing project, where CLAUDE.md already says something the
+                       team relies on.
+      - -Force:        overwrite. Only after the caller has looked at what is being replaced.
+
+    Run scripts/discover.ps1 first to find out which of the three applies, and to read the
+    publisher, prefix, solution and namespace a project already uses.
+
 .EXAMPLE
     ./scripts/scaffold.ps1 -ProjectName Northwind -PublisherName 'Northwind Consulting'
         -PublisherPrefix nwc -SolutionName NorthwindCore -RootNamespace Northwind
@@ -20,6 +30,12 @@
     ./scripts/scaffold.ps1 -ProjectName Northwind -PublisherName 'Northwind Consulting'
         -PublisherPrefix nwc -SolutionName NorthwindCore -RootNamespace Northwind
         -ProjectDescription 'Customer Service implementation for Northwind.' -TargetPath C:\repos\northwind
+
+.EXAMPLE
+    # Adopt the harness into an existing repository: add the missing docs, touch nothing else.
+    ./scripts/scaffold.ps1 -ProjectName Acme -PublisherName 'Acme Consulting' -PublisherPrefix acme
+        -SolutionName AcmeCore -RootNamespace Acme.Crm -ProjectDescription 'Customer Service for Acme.'
+        -TargetPath C:\repos\acme -SkipExisting -SkipLayout -Json
 #>
 [CmdletBinding()]
 param(
@@ -45,7 +61,18 @@ param(
 
     [switch]$DryRun,
 
-    [switch]$Force
+    [switch]$Force,
+
+    # Existing projects: write the files the repository is missing and leave the rest alone,
+    # instead of aborting on the first collision. An existing CLAUDE.md is the usual reason.
+    [switch]$SkipExisting,
+
+    # Do not create the src/, tests/ and docs/adr/ folders. An existing project already has a
+    # layout; adding a second one next to it leaves two conventions in one repository.
+    [switch]$SkipLayout,
+
+    # Emit a JSON summary instead of the human-readable report, for callers that parse the result.
+    [switch]$Json
 )
 
 $ErrorActionPreference = 'Stop'
@@ -57,6 +84,10 @@ function Stop-WithError {
 
     [Console]::Error.WriteLine("ERROR: $Message")
     exit 1
+}
+
+if ($Force -and $SkipExisting) {
+    Stop-WithError '-Force and -SkipExisting ask for opposite things. Choose one: overwrite the existing files, or keep them.'
 }
 
 # Folders the standards expect to exist. Git does not track empty folders, so each one gets a
@@ -151,34 +182,117 @@ if (-not $plannedFiles) {
     Stop-WithError "No template files found under $templatesRoot."
 }
 
-$plannedKeeps = $keepDirectories | ForEach-Object {
-    [pscustomobject]@{
-        Relative    = "$_/.gitkeep"
-        Destination = Join-Path $TargetPath (Join-Path $_ '.gitkeep')
+$plannedKeeps = @()
+if (-not $SkipLayout) {
+    $plannedKeeps = $keepDirectories | ForEach-Object {
+        [pscustomobject]@{
+            Relative    = "$_/.gitkeep"
+            Destination = Join-Path $TargetPath (Join-Path $_ '.gitkeep')
+        }
     }
 }
 
 $allPlanned = @($plannedFiles) + @($plannedKeeps)
 
-$collisions = $allPlanned |
+$collisions = @($allPlanned |
     Where-Object { Test-Path -LiteralPath $_.Destination } |
-    ForEach-Object { $_.Relative }
+    ForEach-Object { $_.Relative })
 
-if ($collisions -and -not $Force) {
+if ($collisions.Count -gt 0 -and -not $Force -and -not $SkipExisting) {
     Write-Host 'These files already exist in the target folder:' -ForegroundColor Red
     $collisions | ForEach-Object { Write-Host "  $_" }
-    Stop-WithError 'Nothing was written. Move or delete the files above, or re-run with -Force to overwrite them.'
+    Stop-WithError 'Nothing was written. Re-run with -SkipExisting to add only what is missing, or with -Force to overwrite the files above.'
 }
 
-Write-Host "Target folder: $TargetPath" -ForegroundColor Cyan
-if ($collisions) {
-    Write-Host "Overwriting $(@($collisions).Count) existing file(s) because -Force was supplied." -ForegroundColor Yellow
+# -SkipExisting narrows the plan instead of aborting: what the repository already has is its own,
+# and an existing CLAUDE.md usually carries instructions this scaffold must not silently replace.
+$skipped = @()
+if ($SkipExisting -and $collisions.Count -gt 0) {
+    $skipped = $collisions
+    $plannedFiles = @($plannedFiles | Where-Object { -not (Test-Path -LiteralPath $_.Destination) })
+    $plannedKeeps = @($plannedKeeps | Where-Object { -not (Test-Path -LiteralPath $_.Destination) })
+}
+
+$written = @($plannedFiles) + @($plannedKeeps)
+
+function Write-Report {
+    param(
+        [string]$Outcome,
+        [string[]]$Created = @(),
+        [string[]]$Skipped = @(),
+        [string[]]$Overwritten = @(),
+        [string[]]$Planned = @()
+    )
+
+    if ($Json) {
+        $payload = [ordered]@{
+            outcome     = $Outcome
+            targetPath  = $TargetPath
+            values      = [ordered]@{
+                projectName        = $ProjectName
+                publisherName      = $PublisherName
+                publisherPrefix    = $PublisherPrefix
+                solutionName       = $SolutionName
+                rootNamespace      = $RootNamespace
+                projectDescription = $ProjectDescription
+            }
+            mode        = [ordered]@{
+                dryRun       = [bool]$DryRun
+                force        = [bool]$Force
+                skipExisting = [bool]$SkipExisting
+                skipLayout   = [bool]$SkipLayout
+            }
+            planned     = @($Planned | Sort-Object)
+            created     = @($Created | Sort-Object)
+            skipped     = @($Skipped | Sort-Object)
+            overwritten = @($Overwritten | Sort-Object)
+        }
+        $payload | ConvertTo-Json -Depth 6
+        return
+    }
+
+    Write-Host "Target folder: $TargetPath" -ForegroundColor Cyan
+
+    if ($Outcome -eq 'dry-run') {
+        Write-Host 'Dry run. These files would be written:' -ForegroundColor Cyan
+        $Planned | Sort-Object | ForEach-Object { Write-Host "  $_" }
+        if ($Skipped.Count -gt 0) {
+            Write-Host 'Left untouched because they already exist:' -ForegroundColor Yellow
+            $Skipped | Sort-Object | ForEach-Object { Write-Host "  $_" }
+        }
+        Write-Host 'Nothing was written.' -ForegroundColor Cyan
+        return
+    }
+
+    if ($Overwritten.Count -gt 0) {
+        Write-Host "Overwrote $($Overwritten.Count) existing file(s) because -Force was supplied." -ForegroundColor Yellow
+    }
+
+    if ($Created.Count -gt 0) {
+        Write-Host 'Created:' -ForegroundColor Green
+        $Created | Sort-Object | ForEach-Object { Write-Host "  $_" }
+    }
+    else {
+        Write-Host 'Nothing to create: every file the harness installs is already present.' -ForegroundColor Yellow
+    }
+
+    if ($Skipped.Count -gt 0) {
+        Write-Host 'Left untouched because they already exist:' -ForegroundColor Yellow
+        $Skipped | Sort-Object | ForEach-Object { Write-Host "  $_" }
+        Write-Host 'Compare each one against the template before assuming the harness is current.' -ForegroundColor Yellow
+    }
 }
 
 if ($DryRun) {
-    Write-Host 'Dry run. These files would be created:' -ForegroundColor Cyan
-    $allPlanned | Sort-Object Relative | ForEach-Object { Write-Host "  $($_.Relative)" }
-    Write-Host 'Nothing was written.' -ForegroundColor Cyan
+    Write-Report -Outcome 'dry-run' `
+        -Planned @($written | ForEach-Object { $_.Relative }) `
+        -Skipped $skipped `
+        -Overwritten @(if ($Force) { $collisions } else { @() })
+    return
+}
+
+if ($written.Count -eq 0) {
+    Write-Report -Outcome 'nothing-to-do' -Skipped $skipped
     return
 }
 
@@ -220,11 +334,15 @@ if ($unresolved) {
     Stop-WithError 'The scaffold is incomplete. Report these tokens instead of hand-editing the output.'
 }
 
-Write-Host 'Created:' -ForegroundColor Green
-$allPlanned | Sort-Object Relative | ForEach-Object { Write-Host "  $($_.Relative)" }
+Write-Report -Outcome 'written' `
+    -Created @($written | ForEach-Object { $_.Relative }) `
+    -Skipped $skipped `
+    -Overwritten @(if ($Force) { $collisions } else { @() })
 
-Write-Host ''
-Write-Host "Project:   $ProjectName" -ForegroundColor Cyan
-Write-Host "Publisher: $PublisherName ($PublisherPrefix)" -ForegroundColor Cyan
-Write-Host "Solution:  $SolutionName" -ForegroundColor Cyan
-Write-Host "Namespace: $RootNamespace" -ForegroundColor Cyan
+if (-not $Json) {
+    Write-Host ''
+    Write-Host "Project:   $ProjectName" -ForegroundColor Cyan
+    Write-Host "Publisher: $PublisherName ($PublisherPrefix)" -ForegroundColor Cyan
+    Write-Host "Solution:  $SolutionName" -ForegroundColor Cyan
+    Write-Host "Namespace: $RootNamespace" -ForegroundColor Cyan
+}
