@@ -15,11 +15,18 @@ Read `docs/agents/development-standards.md` first. This file only adds what is s
 - Dataverse logical name: `{{publisher_prefix}}_<TableOrDomain>Form.js`.
 - Unit tests are co-located next to the file they cover: `<TableOrDomain>Form.test.js`.
 - Solution packaging MUST exclude `*.test.js`; only web resource files are deployed.
-- Each web resource MUST use an IIFE that receives `globalThis` as its root object.
+- Each web resource MUST use the Revealing Module Pattern, implemented with an IIFE and assigned directly to the global `{{project_name}}` namespace.
 ```js
-(function (root) {
-  "use strict";
-})(globalThis);
+globalThis.`{{project_name}}` = globalThis.`{{project_name}}` || {}; 
+globalThis.`{{project_name}}`.<TableOrDomain>Form = (function () {
+  "use strict"; 
+
+  // Private implementation 
+  
+  return { 
+    onLoad 
+  }; 
+})();
 ```
 - Each web resource MUST expose exactly one form API object, under the namespace `{{project_name}}.<TableOrDomain>Form`. No other global namespace or API object.
 - Register form event handlers with their fully qualified name, e.g. `{{project_name}}.<TableOrDomain>Form.onLoad`. Event handlers MUST NOT be exposed as standalone global functions.

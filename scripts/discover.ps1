@@ -708,6 +708,7 @@ $solutionXmlFiles = Select-Files -Files $files -Pattern '(?i)(^|/)Other/Solution
 $projectFiles = Select-Files -Files $files -Pattern '(?i)\.csproj$' -Limit 100
 $packageJsonFiles = Select-Files -Files $files -Pattern '(?i)(^|/)package\.json$' -Limit 50
 $pcfManifestFiles = Select-Files -Files $files -Pattern '(?i)(^|/)ControlManifest\.Input\.xml$' -Limit 50
+$esprojFiles = Select-Files -Files $files -Pattern '(?i)\.esproj$' -Limit 50
 
 $solutions = @(Get-SolutionFacts -Root $Path -SolutionXmlFiles $solutionXmlFiles)
 $projects = @(Get-ProjectFacts -Root $Path -ProjectFiles $projectFiles)
@@ -809,6 +810,7 @@ $dotnet = [ordered]@{
     solutionFiles = Select-Files -Files $files -Pattern '(?i)\.slnx?$' -Limit 20
     projects      = $projects
     projectCount  = $projects.Count
+    esprojFiles   = $esprojFiles
 }
 
 $node = [ordered]@{
@@ -1198,6 +1200,25 @@ if ($baseline) {
                 }
             }
 
+            'webresources.buildProject' {
+                $hasWebResources = @($repository.layout.actual.webResourceFolders).Count -gt 0 -or $repository.counts.javascript -gt 0
+                if ($classification -eq 'greenfield' -or -not $hasWebResources) {
+                    $assessments += New-Assessment -Assertion $assertion -Status 'not-applicable' -Detected $null -Detail 'No web resources in the repository, or the scaffold will create the project.'
+                }
+                else {
+                    $webResourcesPackageJson = @($packages | Where-Object { $_.path -match '(?i)(^|/)webresources?/' })
+                    if ($esprojFiles.Count -gt 0) {
+                        $assessments += New-Assessment -Assertion $assertion -Status 'match' -Detected 'esproj build project present' -Evidence $esprojFiles
+                    }
+                    elseif ($webResourcesPackageJson.Count -gt 0) {
+                        $assessments += New-Assessment -Assertion $assertion -Status 'deviates' -Detected 'package.json without an .esproj' -Detail 'Web resources have test/lint tooling but no SDK-style project file.' -Evidence @($webResourcesPackageJson | ForEach-Object { $_.path })
+                    }
+                    else {
+                        $assessments += New-Assessment -Assertion $assertion -Status 'deviates' -Detected $null -Detail 'No WebResources build/test project exists yet.' -Evidence @($repository.layout.actual.webResourceFolders)
+                    }
+                }
+            }
+
             'layout.folders' {
                 $missingFolders = @($repository.layout.expected.Keys | Where-Object { -not $repository.layout.expected[$_] })
                 $alternatives = @()
@@ -1401,6 +1422,13 @@ else {
     $recommendation['scaffoldArguments'] = @('-SkipExisting')
     if (@($repository.layout.actual.solutionFolders).Count -gt 0 -or @($repository.layout.actual.pluginFolders).Count -gt 0) {
         $recommendation['scaffoldArguments'] += '-SkipLayout'
+    }
+    # Dataverse.sln and the WebResources build project introduce a test runner (Vitest). Never
+    # write that unprompted into an established project: offer it during reconciliation instead,
+    # from the webresources.buildProject assessment above, and only add it if the user asks.
+    if ($recommendation['scaffoldArguments'] -notcontains '-SkipLayout') {
+        $recommendation['scaffoldArguments'] += '-SkipWebResourcesProject'
+        $recommendation['blockers'] += 'This is an existing project: Dataverse.sln and the WebResources build project (.esproj + Vitest/ESLint) are never added automatically. Report the webresources.buildProject assessment during reconciliation and add it explicitly only if the user asks.'
     }
     if ($repository.agentDocs.claudeMd) {
         $recommendation['blockers'] += 'CLAUDE.md already exists. The scaffold will skip it with -SkipExisting: merge the harness sections into the existing file by hand rather than overwriting instructions the project already relies on.'

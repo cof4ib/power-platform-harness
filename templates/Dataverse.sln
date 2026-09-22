@@ -1,0 +1,25 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "{{publisher_prefix}}.WebResources", "src\WebResources\{{publisher_prefix}}.WebResources\{{publisher_prefix}}.WebResources.esproj", "{E1B4A46E-9D1F-4B7D-9E6D-2C6C8E9E9C11}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E1B4A46E-9D1F-4B7D-9E6D-2C6C8E9E9C11}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1B4A46E-9D1F-4B7D-9E6D-2C6C8E9E9C11}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1B4A46E-9D1F-4B7D-9E6D-2C6C8E9E9C11}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1B4A46E-9D1F-4B7D-9E6D-2C6C8E9E9C11}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A3D6E5B0-8C0B-4B9E-8F86-8E9C3B2A5A11}
+	EndGlobalSection
+EndGlobal

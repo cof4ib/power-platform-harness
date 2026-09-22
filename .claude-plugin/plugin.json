@@ -1,6 +1,6 @@
 {
   "name": "power-platform-harness",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "description": "Installs a Power Platform / Dynamics 365 CE development harness: agent instructions, per-technology development standards, a solution sync script and the expected folder layout. Scaffolds a new repository, or adopts an existing one by reading its publisher, prefix, solution and stack from the repository and the environment and reporting where they differ from the standards.",
   "author": {
     "name": "Fran",

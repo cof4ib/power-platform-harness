@@ -1,11 +1,23 @@
 # .NET build output
 [Bb]in/
 [Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+[Tt]est[Rr]esult*/
+*.trx
+*.log
+*.coverage
+*.coveragexml
+
+# Visual Studio
 .vs/
 *.user
 *.suo
-TestResults/
-*.trx
+*.rsuser
+*.userosscache
+*.sln.docstates
+_ReSharper*/
+*.DotSettings.user
 
 # NuGet
 packages/
@@ -16,6 +28,14 @@ node_modules/
 out/
 generated/
 *.tsbuildinfo
+coverage/
+
+# Playwright (optional PCF/E2E tooling)
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+.playwright-cli/
 
 # Dataverse solution artifacts: only the unpacked solution is committed
 src/Solutions/**/*.zip
@@ -25,11 +45,24 @@ src/Solutions/**/*.zip
 *.env
 secrets.json
 appsettings.*.local.json
+*.pfx
+*.snk
+*.publishsettings
 
 # Local agent and tooling state
 .claude/settings.local.json
 .build-cache/
 
+# VS Code: ignore personal settings, keep what the team shares
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
 # OS
 .DS_Store
 Thumbs.db
+*~
+~$*

@@ -11,6 +11,10 @@
     collision first and aborts without touching the working tree. Use -DryRun to print the
     resulting tree without writing anything.
 
+    Also creates Dataverse.sln and the WebResources build project (an SDK-style .esproj with
+    Vitest + ESLint tooling) under src/WebResources/, unless -SkipLayout or
+    -SkipWebResourcesProject is supplied.
+
     Three ways to handle a folder that is not empty:
       - default:      abort and list the collisions, writing nothing.
       - -SkipExisting: write what is missing, leave every existing file untouched. This is the
@@ -71,6 +75,11 @@ param(
     # layout; adding a second one next to it leaves two conventions in one repository.
     [switch]$SkipLayout,
 
+    # Do not create Dataverse.sln or the WebResources build project (.esproj + package.json +
+    # Vitest/ESLint config). Use for an existing project: it introduces a test runner, and the
+    # harness must never impose one a project has not already chosen. -SkipLayout implies this.
+    [switch]$SkipWebResourcesProject,
+
     # Emit a JSON summary instead of the human-readable report, for callers that parse the result.
     [switch]$Json
 )
@@ -100,6 +109,16 @@ $keepDirectories = @(
     'tests/Plugins'
     'tests/CustomAPIs'
     'docs/adr'
+)
+
+# The WebResources build project's own source folders. Empty until the first web resource is
+# added, so each one needs a .gitkeep like $keepDirectories above.
+$webResourcesProjectFolder = "src/WebResources/$PublisherPrefix.WebResources"
+$webResourcesKeepDirectories = @(
+    "$webResourcesProjectFolder/${PublisherPrefix}_/src/js"
+    "$webResourcesProjectFolder/${PublisherPrefix}_/src/html"
+    "$webResourcesProjectFolder/${PublisherPrefix}_/src/css"
+    "$webResourcesProjectFolder/${PublisherPrefix}_/src/icons"
 )
 
 function Assert-Value {
@@ -170,16 +189,36 @@ $tokens = [ordered]@{
 
 $plannedFiles = Get-ChildItem -LiteralPath $templatesRoot -Recurse -File -Force |
     ForEach-Object {
-        $relative = $_.FullName.Substring($templatesRoot.Length).TrimStart('\', '/')
+        $templateRelative = ($_.FullName.Substring($templatesRoot.Length).TrimStart('\', '/')) -replace '\\', '/'
+
+        # A template's own folder or file name can carry a token too (the WebResources project is
+        # named after the publisher prefix), so resolve it the same way file content is resolved.
+        $destinationRelative = $templateRelative
+        foreach ($token in $tokens.Keys) {
+            $destinationRelative = $destinationRelative.Replace($token, $tokens[$token])
+        }
+
         [pscustomobject]@{
             Source      = $_.FullName
-            Relative    = $relative -replace '\\', '/'
-            Destination = Join-Path $TargetPath $relative
+            Relative    = $destinationRelative
+            Destination = Join-Path $TargetPath $destinationRelative
         }
     }
 
 if (-not $plannedFiles) {
     Stop-WithError "No template files found under $templatesRoot."
+}
+
+# The WebResources build project (Dataverse.sln plus everything under src/WebResources/) is
+# planned separately: -SkipLayout suppresses it because it assumes the standard src/WebResources
+# path, and -SkipWebResourcesProject suppresses it on its own, for an existing project that has
+# not chosen this tooling.
+$webResourcesProjectPattern = '^(Dataverse\.sln|src/WebResources/)'
+$webResourcesProjectFiles = @($plannedFiles | Where-Object { $_.Relative -match $webResourcesProjectPattern })
+$plannedFiles = @($plannedFiles | Where-Object { $_.Relative -notmatch $webResourcesProjectPattern })
+
+if (-not $SkipLayout -and -not $SkipWebResourcesProject) {
+    $plannedFiles = @($plannedFiles) + @($webResourcesProjectFiles)
 }
 
 $plannedKeeps = @()
@@ -189,6 +228,15 @@ if (-not $SkipLayout) {
             Relative    = "$_/.gitkeep"
             Destination = Join-Path $TargetPath (Join-Path $_ '.gitkeep')
         }
+    }
+
+    if (-not $SkipWebResourcesProject) {
+        $plannedKeeps = @($plannedKeeps) + @($webResourcesKeepDirectories | ForEach-Object {
+            [pscustomobject]@{
+                Relative    = "$_/.gitkeep"
+                Destination = Join-Path $TargetPath (Join-Path $_ '.gitkeep')
+            }
+        })
     }
 }
 
@@ -237,10 +285,11 @@ function Write-Report {
                 projectDescription = $ProjectDescription
             }
             mode        = [ordered]@{
-                dryRun       = [bool]$DryRun
-                force        = [bool]$Force
-                skipExisting = [bool]$SkipExisting
-                skipLayout   = [bool]$SkipLayout
+                dryRun                  = [bool]$DryRun
+                force                   = [bool]$Force
+                skipExisting            = [bool]$SkipExisting
+                skipLayout              = [bool]$SkipLayout
+                skipWebResourcesProject = [bool]$SkipWebResourcesProject
             }
             planned     = @($Planned | Sort-Object)
             created     = @($Created | Sort-Object)

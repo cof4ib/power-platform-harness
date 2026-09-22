@@ -9,7 +9,7 @@ allowed-tools: Bash(pwsh -NoProfile -File "${CLAUDE_PLUGIN_ROOT}/scripts/discove
 
 Two jobs, decided by what is already in the folder:
 
-- **Empty folder** — scaffold the full harness: `CLAUDE.md`, `docs/agents/development-standards.md`, `docs/development/*.md`, `scripts/sync-solution.ps1`, `.gitignore`, and the `src/`, `tests/`, `docs/adr/` layout.
+- **Empty folder** — scaffold the full harness: `CLAUDE.md`, `docs/agents/development-standards.md`, `docs/development/*.md`, `scripts/sync-solution.ps1`, `.gitignore`, `Dataverse.sln` and the WebResources build project, and the `src/`, `tests/`, `docs/adr/` layout.
 - **Existing project** — adopt the harness into it: add only what is missing, keep what the project already has, and reconcile the standards with the stack the project actually uses. Never set a version, framework or layout the project does not use.
 
 Two bundled scripts do the work. `discover.ps1` reads; `scaffold.ps1` writes. Do not write or paraphrase template content yourself, and do not hand-craft files the scaffold produces.
@@ -19,9 +19,18 @@ Two bundled scripts do the work. `discover.ps1` reads; `scaffold.ps1` writes. Do
 `AskUserQuestion` takes at most 4 questions, and each needs 2 to 4 concrete predefined options. It cannot collect free text, a name, a prefix or a url. Calling it for those fails with `Invalid tool parameters` — that is what happens when this rule is ignored, twice in one session.
 
 - **Free-text values** (project name, publisher, prefix, solution, namespace, description, environment url): ask in a plain assistant message as a numbered list, then stop and wait.
-- **`AskUserQuestion` is for closed choices only**, and this skill has exactly three: the single go-ahead in step 4, how to resolve deviations in step 3, and which platform steps to run in step 6.
+- **`AskUserQuestion` is for closed choices only**, and this skill has exactly four: which language to use (step 0, only when nothing else establishes it), the single go-ahead in step 4, how to resolve deviations in step 3, and which platform steps to run in step 6.
 
 Never invent a value. Never derive one silently from the folder name. A wrong publisher prefix cannot be undone once components exist.
+
+## 0. Language
+
+Decide what language this conversation happens in before anything else, including Discover.
+
+- If the user already wrote something in this session before the skill ran, that message is the answer: infer the language from it and do not ask.
+- If the skill is the first thing in the session — nothing from the user to read yet — ask with `AskUserQuestion` which language to use. Offer a handful of common ones (e.g. Spanish, English, French, German); the tool always adds "Other" for anything else.
+- Use the resolved language for every question, confirmation and report this skill produces from here on, including this document's own wording where it addresses the user.
+- Never translate what gets written into the target repository. `docs/agents/development-standards.md` requires English for identifiers, comments, commit messages and documentation, and the shipped templates are already in English: `CLAUDE.md`, the standards files and code stay English regardless of the conversation language. Only the conversation with the user changes.
 
 ## 1. Discover
 
@@ -104,6 +113,7 @@ Flag rules:
 
 - `-SkipExisting` — existing project, or a folder that already holds some harness files. Writes what is missing, reports what it left alone.
 - `-SkipLayout` — the project already has its own layout.
+- `-SkipWebResourcesProject` — existing project. `Dataverse.sln` and the WebResources build project introduce a test runner (Vitest); never write that unprompted into an established repository. `recommendation.scaffoldArguments` already includes it whenever the mode is `adopt` and `-SkipLayout` was not already implied. Omit it only when the user explicitly asks to add the project to an existing repository, having seen the `webresources.buildProject` assessment in step 3.
 - `-Force` — only when the user has explicitly accepted overwriting the exact files listed. Never combined with `-SkipExisting`; the script rejects that.
 
 If the script fails, report its output verbatim. Do not hand-edit generated files to work around it.

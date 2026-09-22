@@ -178,6 +178,17 @@
       "guidance": "A repository that already ships several solutions is not violating the standard retroactively. Record which solution the harness values describe, and which others exist."
     },
     {
+      "id": "webresources.buildProject",
+      "kind": "layout",
+      "topic": "WebResources build/test project",
+      "standard": "esproj",
+      "standardLabel": "SDK-style .esproj project (Microsoft.VisualStudio.JavaScript.Sdk) with Vitest + ESLint tooling, under src/WebResources/<prefix>.WebResources/",
+      "assertedIn": "templates/docs/development/webresources-project.md",
+      "targetFile": "docs/development/webresources-project.md",
+      "assertedText": "The WebResources folder is an SDK-style project",
+      "guidance": "A repository that already edits web resources without this project is not broken. Never retrofit an existing, differently structured WebResources setup: offer this during reconciliation instead of writing it silently."
+    },
+    {
       "id": "layout.folders",
       "kind": "layout",
       "topic": "Repository layout",

@@ -15,14 +15,15 @@ Rules that apply to every change in this repository, whatever the technology.
 - Do not introduce abstractions until there is a demonstrated need. Two call sites are not a need; three divergent ones might be.
 - Change only what the task requires. No opportunistic refactors, renames, formatting sweeps or dependency bumps riding along with a functional change: they hide the real diff from the reviewer.
 - Never introduce a new technology, framework, library, architectural pattern, testing framework or project convention when an equivalent project standard already exists.
-- Record a decision in `docs/adr/` before implementing it whenever it affects architecture or project-wide conventions.
+- When nothing here decides it: check the existing codebase, then this repository's docs and skills, then relevant MCPs and official Microsoft documentation. Prefer the established project pattern over a generic best practice.
+- Record a decision in `docs/adr/` before implementing it whenever it affects architecture or project-wide conventions — including one resolved through the fallback above.
 
 ## Business logic separation
 
 - Express a business rule independently of the platform whenever the rule can be stated without it.
 - Pure business rules take and return plain values, are deterministic and side-effect free. Pass non-deterministic inputs (current time, GUIDs, random values, current user) as parameters.
 - Platform APIs, context objects and I/O belong in the integration layer, never inside the rule.
-- Do not introduce abstractions solely to enforce this separation. Simple logic stays simple.
+- Do not force this separation onto logic that is already simple.
 
 ## Error handling
 
@@ -87,6 +88,13 @@ Compiling is not done. A task is complete only when all of the following hold:
 - Any new public contract is documented: a form API, a Custom API request/response, a plugin step, an environment variable.
 - For declarative changes: the evidence listed under Verification & reporting exists, and `src/Solutions/{{solution_name}}/` is in sync with the environment.
 
+## Git
+
+- Commit only once the change satisfies the Definition of Done above — never leave a commit as the final state of a task in a broken or partially-implemented condition.
+- Commit messages describe the change and its motivation, not just the action (`fix`, `update` alone are not enough).
+- Prefer `gh` for PR creation, review and inspection over the web UI.
+- Branch naming: `<type>/<short-description>` (e.g. `fix/`, `feature/`, `chore/`).
+
 ## Standards index
 
 Read the file for each technology the change touches, before writing.
@@ -94,6 +102,7 @@ Read the file for each technology the change touches, before writing.
 | Technology | File | Status |
 | --- | --- | --- |
 | JavaScript web resources | `docs/development/javascript.md` | Ready |
+| WebResources build project | `docs/development/webresources-project.md` | Ready |
 | C# Dataverse plugins | `docs/development/csharp-plugins.md` | Ready |
 | PCF controls | `docs/development/pcf.md` | Ready |
 | Custom APIs | `docs/development/custom-apis.md` | Ready |
