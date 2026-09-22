@@ -6,6 +6,8 @@
     Answers the questions the set-power-platform skill needs before it writes anything:
 
       - Which tools are available (pwsh, pac, git, dotnet, node, gh)?
+      - Is playwright-cli installed for browser automation, or only the Playwright MCP server?
+      - Is the Dataverse MCP server's local proxy installed and registered with the agent?
       - Is this folder empty, or an existing project the harness has to adapt to?
       - Which publisher, prefix, solution and namespace does the project already use?
       - Which versions and frameworks does it actually use, and where do those differ from the
@@ -100,8 +102,21 @@ function Resolve-Tool {
                 $info.Executable = $command.Source
             }
         }
-        # Anything else (a .ps1 shim such as npm.ps1, a function, an alias) is reported as present
-        # but is never executed: presence is all this script needs from those.
+        elseif ($command.CommandType -eq 'ExternalScript' -and [System.IO.Path]::GetExtension($command.Source) -eq '.ps1') {
+            # npm installs a .ps1 shim alongside the .cmd/extension-less ones on Windows, and
+            # Get-Command resolves the .ps1 first. Without this, every npm-installed CLI whose
+            # first match is the .ps1 shim (claude, playwright-cli) would be reported as present
+            # but never actually probed.
+            $shellCommand = Get-Command -Name pwsh -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $shellCommand) { $shellCommand = Get-Command -Name powershell -ErrorAction SilentlyContinue | Select-Object -First 1 }
+            if ($shellCommand) {
+                $info.Executable = $shellCommand.Source
+                $info.Prefix = @('-NoProfile', '-NonInteractive', '-File', $command.Source)
+            }
+        }
+        # Anything else (a function, an alias, or a .ps1 shim when no PowerShell host could be
+        # found to run it) is reported as present but is never executed: presence is all this
+        # script needs from those.
     }
 
     $script:resolvedTools[$Name] = $info
@@ -635,6 +650,50 @@ function Get-EnvironmentSolutions {
     }
 }
 
+function Get-DotnetGlobalToolIds {
+    param([bool]$DotnetPresent, [int]$Timeout = 30)
+
+    $result = [ordered]@{ packageIds = @(); error = $null }
+    if (-not $DotnetPresent) {
+        $result.error = "'dotnet' was not found on PATH."
+        return $result
+    }
+
+    $run = Invoke-Tool -Name 'dotnet' -Arguments @('tool', 'list', '--global') -Timeout $Timeout
+    if (-not $run.Ran -or $run.ExitCode -ne 0) {
+        $result.error = if ($run.Error) { $run.Error } elseif ($run.Stderr) { $run.Stderr } else { $run.Stdout }
+        return $result
+    }
+
+    # `dotnet tool list` prints a fixed-width table with the package id in the first column.
+    $ids = New-Object System.Collections.Generic.List[string]
+    foreach ($line in ($run.Stdout -split "`r?`n")) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed -or $trimmed -match '^(Package Id|-{3,})') { continue }
+        $columns = $trimmed -split '\s{2,}'
+        if ($columns.Count -ge 1 -and $columns[0]) { $ids.Add($columns[0].ToLowerInvariant()) }
+    }
+    $result.packageIds = @($ids)
+    return $result
+}
+
+function Get-ClaudeMcpServers {
+    param([string]$Output)
+
+    # `claude mcp list` prints one server per line as "<name>: <command/url> - <status>". The
+    # exact command and status text vary by version, so only the name and the raw line are kept:
+    # callers match on the raw text, which is more resilient to format drift than column offsets.
+    $servers = New-Object System.Collections.Generic.List[pscustomobject]
+    foreach ($line in ($Output -split "`r?`n")) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed) { continue }
+        $match = [regex]::Match($trimmed, '^(?<name>[^:]+):\s*(?<rest>.+)$')
+        if (-not $match.Success) { continue }
+        $servers.Add([pscustomobject]@{ name = $match.Groups['name'].Value.Trim(); raw = $trimmed })
+    }
+    return $servers
+}
+
 # --------------------------------------------------------------------------------------------
 # Main
 # --------------------------------------------------------------------------------------------
@@ -655,13 +714,15 @@ try {
 # ---- tooling ------------------------------------------------------------------------------
 
 $tooling = [ordered]@{
-    pwsh    = Get-ToolReport -Name 'pwsh' -VersionArguments @('--version')
-    git     = Get-ToolReport -Name 'git' -VersionArguments @('--version')
-    pac     = Get-ToolReport -Name 'pac' -VersionArguments @('--version')
-    dotnet  = Get-ToolReport -Name 'dotnet' -VersionArguments @('--version')
-    node    = Get-ToolReport -Name 'node' -VersionArguments @('--version')
-    npm     = Get-ToolReport -Name 'npm' -VersionArguments @('--version')
-    gh      = Get-ToolReport -Name 'gh' -VersionArguments @('--version')
+    pwsh          = Get-ToolReport -Name 'pwsh' -VersionArguments @('--version')
+    git           = Get-ToolReport -Name 'git' -VersionArguments @('--version')
+    pac           = Get-ToolReport -Name 'pac' -VersionArguments @('--version')
+    dotnet        = Get-ToolReport -Name 'dotnet' -VersionArguments @('--version')
+    node          = Get-ToolReport -Name 'node' -VersionArguments @('--version')
+    npm           = Get-ToolReport -Name 'npm' -VersionArguments @('--version')
+    gh            = Get-ToolReport -Name 'gh' -VersionArguments @('--version')
+    claude        = Get-ToolReport -Name 'claude' -VersionArguments @('--version')
+    playwrightCli = Get-ToolReport -Name 'playwright-cli' -VersionArguments @('--version')
 }
 $tooling['currentPowerShell'] = [ordered]@{
     present = $true
@@ -675,6 +736,15 @@ if (-not $tooling.pwsh.present -and $PSVersionTable.PSVersion.Major -lt 6) {
 if (-not $tooling.pac.present) {
     $notes.Add('pac is not installed, so no environment fact could be read. Install the Power Platform CLI to let discovery propose the publisher, prefix and solution from Dataverse.') | Out-Null
 }
+
+# playwright-cli (@playwright/cli): a coding-agent-oriented CLI for browser automation, and the
+# preferred alternative to the Playwright MCP server because it avoids loading tool schemas and
+# accessibility trees into the model context. Whether it or the MCP server is actually the better
+# choice depends on what is already configured, so the note is composed once the MCP servers this
+# agent has registered are known, in the environment section below.
+$dataverseMcpProxyPackageId = 'microsoft.powerplatform.dataverse.mcp'
+$dotnetGlobalTools = Get-DotnetGlobalToolIds -DotnetPresent $tooling.dotnet.present
+$dataverseMcpProxyInstalled = @($dotnetGlobalTools.packageIds) -contains $dataverseMcpProxyPackageId
 
 # ---- repository ---------------------------------------------------------------------------
 
@@ -949,6 +1019,96 @@ if (-not $SkipEnvironment -and $tooling.pac.present) {
 elseif (-not $SkipEnvironment) {
     $environment['probed'] = $false
     $environment.errors += 'pac is not installed; no environment fact was read.'
+}
+
+# ---- coding-agent integrations: Playwright and the Dataverse MCP server -------------------
+
+# `claude mcp list` can report a configured server as unreachable, which is itself a network
+# probe, so it is skipped under -SkipEnvironment for the same reason `pac` calls are.
+$agentTooling = [ordered]@{
+    playwright = [ordered]@{
+        cliInstalled   = $tooling.playwrightCli.present
+        cliVersion     = $tooling.playwrightCli.version
+        mcpConfigured  = $false
+        mcpServerName  = $null
+        mcpServerRaw   = $null
+        status         = $null
+        recommendation = $null
+    }
+    dataverseMcp = [ordered]@{
+        localProxyInstalled = $dataverseMcpProxyInstalled
+        mcpConfigured       = $false
+        mcpServerName       = $null
+        mcpServerRaw        = $null
+        status              = $null
+        recommendation      = $null
+    }
+    mcpListProbed = $false
+    mcpListError  = $null
+}
+
+if (-not $SkipEnvironment) {
+    if ($tooling.claude.present) {
+        $mcpListRun = Invoke-Tool -Name 'claude' -Arguments @('mcp', 'list') -Timeout ([Math]::Max($TimeoutSeconds, 60))
+        if ($mcpListRun.Ran -and $mcpListRun.ExitCode -eq 0) {
+            $agentTooling['mcpListProbed'] = $true
+            $mcpServers = @(Get-ClaudeMcpServers -Output $mcpListRun.Stdout)
+            $playwrightServer = @($mcpServers | Where-Object { $_.raw -match '(?i)playwright' }) | Select-Object -First 1
+            $dataverseServer = @($mcpServers | Where-Object { $_.raw -match '(?i)dataverse' }) | Select-Object -First 1
+
+            if ($playwrightServer) {
+                $agentTooling.playwright['mcpConfigured'] = $true
+                $agentTooling.playwright['mcpServerName'] = $playwrightServer.name
+                $agentTooling.playwright['mcpServerRaw'] = $playwrightServer.raw
+            }
+            if ($dataverseServer) {
+                $agentTooling.dataverseMcp['mcpConfigured'] = $true
+                $agentTooling.dataverseMcp['mcpServerName'] = $dataverseServer.name
+                $agentTooling.dataverseMcp['mcpServerRaw'] = $dataverseServer.raw
+            }
+        }
+        else {
+            $agentTooling['mcpListError'] = if ($mcpListRun.Error) { $mcpListRun.Error } elseif ($mcpListRun.Stderr) { $mcpListRun.Stderr } else { $mcpListRun.Stdout }
+        }
+    }
+    else {
+        $agentTooling['mcpListError'] = "'claude' was not found on PATH; MCP server registrations could not be checked."
+    }
+}
+
+# Playwright: playwright-cli is the preferred tool for a coding agent doing browser automation
+# (fewer tokens than MCP, since it skips tool schemas and accessibility trees). Recommend it even
+# when the MCP server already covers the same need.
+if ($agentTooling.playwright.cliInstalled) {
+    $agentTooling.playwright['status'] = 'cli-installed'
+}
+elseif ($agentTooling.playwright.mcpConfigured) {
+    $agentTooling.playwright['status'] = 'mcp-only'
+    $agentTooling.playwright['recommendation'] = "Only the Playwright MCP server ('$($agentTooling.playwright.mcpServerName)') is configured. Coding agents should prefer playwright-cli: it is more token-efficient than MCP because it does not load tool schemas or accessibility trees into context. Install: npm install -g @playwright/cli@latest (https://github.com/microsoft/playwright-cli)."
+    $notes.Add($agentTooling.playwright.recommendation) | Out-Null
+}
+else {
+    $agentTooling.playwright['status'] = 'none'
+    $agentTooling.playwright['recommendation'] = "Neither playwright-cli nor the Playwright MCP server is set up. Prefer playwright-cli for coding agents: npm install -g @playwright/cli@latest (https://github.com/microsoft/playwright-cli). If an MCP server is required instead, use: claude mcp add playwright npx @playwright/mcp@latest."
+    $notes.Add($agentTooling.playwright.recommendation) | Out-Null
+}
+
+# Dataverse MCP: a server registered with the agent (local-proxy or remote-endpoint approach,
+# per https://learn.microsoft.com/power-apps/maker/data-platform/data-platform-mcp-other-clients)
+# is what makes it usable. The local proxy dotnet tool is only one of the two connection methods,
+# so its presence alone, without a registered server, is a half-finished setup worth flagging.
+if ($agentTooling.dataverseMcp.mcpConfigured) {
+    $agentTooling.dataverseMcp['status'] = 'configured'
+}
+elseif ($agentTooling.dataverseMcp.localProxyInstalled) {
+    $agentTooling.dataverseMcp['status'] = 'proxy-only'
+    $agentTooling.dataverseMcp['recommendation'] = 'Microsoft.PowerPlatform.Dataverse.MCP is installed as a global dotnet tool but no MCP server using it is registered with this agent. Register it (claude mcp add) so it is available for use. Docs: https://learn.microsoft.com/power-apps/maker/data-platform/data-platform-mcp-other-clients.'
+    $notes.Add($agentTooling.dataverseMcp.recommendation) | Out-Null
+}
+else {
+    $agentTooling.dataverseMcp['status'] = 'none'
+    $agentTooling.dataverseMcp['recommendation'] = 'The Dataverse MCP server is not installed or configured. Either register the remote endpoint directly (an Entra app registration; see docs), or install the local proxy (dotnet tool install --global Microsoft.PowerPlatform.Dataverse.MCP; requires .NET SDK 8+) and register it as an MCP server for this agent. The Dataverse MCP feature must also be enabled on the environment (Power Platform admin center > environment > Settings > Product > Features > Dataverse Model Context Protocol). Docs: https://learn.microsoft.com/power-apps/maker/data-platform/data-platform-mcp.'
+    $notes.Add($agentTooling.dataverseMcp.recommendation) | Out-Null
 }
 
 # ---- deviations from the shipped standards -------------------------------------------------
@@ -1449,6 +1609,7 @@ $report = [ordered]@{
     generatedAt    = (Get-Date).ToString('o')
     pluginRoot     = $pluginRoot
     tooling        = $tooling
+    agentTooling   = $agentTooling
     repository     = $repository
     dotnet         = $dotnet
     node           = $node

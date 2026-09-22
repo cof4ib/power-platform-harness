@@ -7,7 +7,7 @@ Rules that apply to every change in this repository, whatever the technology.
 - Read this file before any change. Then read the standards file for each technology the change touches — only those, not all of them.
 - A technology file may make a rule here more specific. It MUST NOT contradict it. On a genuine conflict, this file wins and the conflict is reported.
 - If the change touches a technology with no standards file, apply this file alone and state that gap explicitly in the final report.
-- Project identity: project `{{project_name}}`, publisher `{{publisher_name}}` with customization prefix `{{publisher_prefix}}`, unmanaged solution `{{solution_name}}` in DEV, root .NET namespace `{{root_namespace}}`. The prefix is permanent and cannot be changed once components exist. When a task needs a value not recorded here — an environment url, a connection reference, an environment variable — stop and ask. Never invent one.
+- Project identity: project `{{project_name}}`, publisher `{{publisher_name}}` with customization prefix `{{publisher_prefix}}`, unmanaged solution `{{solution_name}}` in DEV, root .NET namespace `{{root_namespace}}`.
 
 ## Design principles
 
@@ -47,13 +47,12 @@ Rules that apply to every change in this repository, whatever the technology.
 - Retrieve only the columns and rows the operation needs. No unbounded queries; page explicitly.
 - Prefer data already available in context (form values, trigger payload, registered images, framework context) over retrieving the same data again.
 - Never query inside a loop when a single filtered query answers the same question.
-- Respect platform limits by design: sandbox timeouts, API request limits, throttling, message size. A change that only works below production volume is not done.
+- Respect platform limits by design: sandbox timeouts, API request limits, throttling, message size.
 
 ## Naming & language
 
-- Identifiers, comments, commit messages and documentation are written in English.
-- End-user visible text is never a literal in code, flows or scripts. It comes from Dataverse labels, translations or localised resources.
-- The Dataverse base language is English; other languages ship as translations.
+- English for all technical work and artifacts.
+- Respond in the user's language unless requested otherwise.
 
 ## Testing
 
