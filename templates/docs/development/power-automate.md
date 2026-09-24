@@ -12,7 +12,7 @@ Read `docs/agents/development-standards.md` first. This file only adds what is s
 
 ## Stack & packaging
 
-- Every flow is solution-aware and lives in `{{solution_name}}`. A flow created outside a solution is not deliverable — recreate it inside.
+- Every flow is solution-aware and lives in `{{solution_name}}`, plus the feature solution of the branch that created it. A flow created outside a solution is not deliverable — recreate it inside.
 - Connections are referenced through connection references, never bound to a personal account.
 - Anything that varies between DEV, TEST and PROD is an environment variable: URLs, endpoints, keys, external identifiers, toggles. No literal URL, GUID, key or endpoint inside a flow.
 - Flows are deployed only as part of the solution. Never edit a flow directly in TEST or PROD.

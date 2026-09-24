@@ -30,7 +30,7 @@ Read `docs/agents/development-standards.md` first, then `docs/development/csharp
 
 - Adding an optional request parameter, or a response parameter, is backwards compatible. Removing, renaming or retyping anything is not: create a new Custom API and retire the old one once callers have moved.
 - Every Custom API and its parameters are documented as part of the change that introduces them.
-- The definition is a solution component: it lives in `{{solution_name}}` and travels with the solution. Never hand-created per environment.
+- The definition is a solution component: it lives in `{{solution_name}}` and in the feature solution of the branch that created it, and travels with the solution. Never hand-created per environment.
 
 ## Testing & verification
 

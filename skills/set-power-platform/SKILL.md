@@ -65,7 +65,7 @@ The environment, not the user, is the cheapest source of truth for what already 
 | `ProjectName` | Short project name. Lands in .NET namespaces and JavaScript form API objects | Starts with a letter, letters and digits only |
 | `PublisherName` | Dataverse publisher **display** name | Free text |
 | `PublisherPrefix` | Dataverse customization prefix, carried by every component | 2-8 lowercase alphanumeric, starts with a letter, not `mscrm`. **Permanent**: say this out loud before accepting it |
-| `SolutionName` | **Unique** name of the unmanaged solution in DEV, not its display name | Letters, digits and underscores, no spaces |
+| `SolutionName` | **Unique** name of the core unmanaged solution in DEV, not its display name. Per-branch feature solutions are named from their branch later, not here | Letters, digits and underscores, no spaces, no publisher prefix |
 | `RootNamespace` | Root .NET namespace | Valid .NET namespace, dots allowed |
 | `ProjectDescription` | One or two sentences on what the project delivers. Becomes the Description section of `CLAUDE.md` | Free text |
 
@@ -150,7 +150,10 @@ State what was created, what was skipped, what was verified, and what you could 
 Then the steps only a human can take, with the values filled in:
 
 1. Create the publisher `<PublisherName>` with prefix `<PublisherPrefix>` in DEV — **only if it does not exist yet**; discovery says whether the solution was already there.
-2. Create the unmanaged solution `<SolutionName>` under that publisher, same condition.
+2. Create the core unmanaged solution `<SolutionName>` under that publisher, same condition.
 3. Take the first solution snapshot and commit it: `./scripts/sync-solution.ps1 -SolutionName <SolutionName>`. For an existing project, run it with `-Check` first: a difference means the environment holds declarative work nobody has committed.
 4. Read `docs/agents/development-standards.md` before the first change.
-5. For an existing project: the deviations left unreconciled, as a list the team can act on.
+5. Decide and record the promotion topology `docs/development/solutions-alm.md` asks for: whether the environment after DEV takes feature solutions individually, or the core solution whole and managed.
+6. For an existing project: the deviations left unreconciled, as a list the team can act on.
+
+Say one sentence about how work starts from now on: every feature, fix or chore goes on its own branch with its own feature solution named after it, and the agent asks which branch before starting. `docs/development/solutions-alm.md` has the flow.

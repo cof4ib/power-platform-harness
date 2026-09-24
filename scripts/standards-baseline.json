@@ -167,15 +167,26 @@
       "guidance": "scripts/sync-solution.ps1 resolves this path from -SolutionName and will export into the wrong place if the repository unpacks somewhere else. Reconcile the path before the script is used, or do not install it."
     },
     {
-      "id": "alm.singleSolution",
+      "id": "alm.coreAndFeatureSolutions",
       "kind": "layout",
       "topic": "Solution strategy",
-      "standard": "one-unmanaged-solution",
-      "standardLabel": "One unmanaged solution in DEV",
+      "standard": "core-plus-feature-solutions",
+      "standardLabel": "One core solution that owns every component, plus one feature solution per branch that references what the work touches",
       "assertedIn": "templates/docs/development/solutions-alm.md",
       "targetFile": "docs/development/solutions-alm.md",
-      "assertedText": "Split only when a part genuinely needs to deploy on its own schedule",
-      "guidance": "A repository that already ships several solutions is not violating the standard retroactively. Record which solution the harness values describe, and which others exist."
+      "assertedText": "Two kinds of solution, and only two.",
+      "guidance": "A repository that keeps everything in a single solution, or that already segments along different lines (per module, per team, per release), is not violating the standard retroactively. Record which solution the harness values describe and how the others are used; adopting per-branch feature solutions is a change of working practice the team decides on, not a side effect of installing standards."
+    },
+    {
+      "id": "alm.featureSolutionNaming",
+      "kind": "layout",
+      "topic": "Feature solution naming",
+      "standard": "type_PascalCase-from-branch",
+      "standardLabel": "Feature solutions are named from their branch as <type>_<ShortDescriptionInPascalCase>, with no publisher prefix",
+      "assertedIn": "templates/docs/development/solutions-alm.md",
+      "targetFile": "docs/development/solutions-alm.md",
+      "assertedText": "Solution unique names carry no publisher prefix",
+      "guidance": "A solution unique name cannot be changed after it exists. A project whose solutions already carry the publisher prefix, or another naming scheme, keeps it: renaming means recreating every solution and reimporting it downstream."
     },
     {
       "id": "webresources.buildProject",

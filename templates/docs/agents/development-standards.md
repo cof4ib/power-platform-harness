@@ -2,12 +2,16 @@
 
 Rules that apply to every change in this repository, whatever the technology.
 
+## Before starting a unit of work
+
+Every feature, fix or chore is developed on its own branch and, when it touches Dataverse components, in its own feature solution named after that branch. So before writing code or touching a component — including at the start of a fresh session — ask the user whether the work goes on the current branch or on a new one, and wait for the answer. `docs/development/solutions-alm.md` holds the naming rules and the commands; follow them rather than improvising.
+
 ## How to use this file
 
 - Read this file before any change. Then read the standards file for each technology the change touches — only those, not all of them.
 - A technology file may make a rule here more specific. It MUST NOT contradict it. On a genuine conflict, this file wins and the conflict is reported.
 - If the change touches a technology with no standards file, apply this file alone and state that gap explicitly in the final report.
-- Project identity: project `{{project_name}}`, publisher `{{publisher_name}}` with customization prefix `{{publisher_prefix}}`, unmanaged solution `{{solution_name}}` in DEV, root .NET namespace `{{root_namespace}}`.
+- Project identity: project `{{project_name}}`, publisher `{{publisher_name}}` with customization prefix `{{publisher_prefix}}`, core unmanaged solution `{{solution_name}}` in DEV, root .NET namespace `{{root_namespace}}`.
 
 ## Design principles
 
@@ -62,7 +66,7 @@ Rules that apply to every change in this repository, whatever the technology.
 - Cover expected behaviour, the relevant edge cases, and the failure paths.
 - Tests are independent of execution order and of state left behind by another test.
 - A change is incomplete while a required test is missing or failing.
-- Some artifacts cannot be unit tested — flows, schema, security, solution configuration. They are not exempt from proof: see Verification & reporting.
+- Some artifacts cannot be unit tested — flows, schema, security, solution configuration, etc. They are not exempt from proof: see Verification & reporting.
 
 ## Verification & reporting
 
@@ -81,11 +85,10 @@ Rules that apply to every change in this repository, whatever the technology.
 Compiling is not done. A task is complete only when all of the following hold:
 
 - The implementation matches the spec and every applicable standards file.
-- Tests were written first and pass; affected projects build with no errors and no new warnings; linting and static analysis are clean.
+- Tests were written first and pass (TDD); affected projects build with no errors and no new warnings; linting and static analysis are clean.
 - The diff was reviewed against spec and standards — `/implement` drives this via `/tdd` and `/code-review`; outside that flow, do the equivalent by hand.
 - No secrets, credentials or regulated data are hardcoded, logged or committed.
-- Any new public contract is documented: a form API, a Custom API request/response, a plugin step, an environment variable.
-- For declarative changes: the evidence listed under Verification & reporting exists, and `src/Solutions/{{solution_name}}/` is in sync with the environment.
+- For declarative changes: the evidence listed under Verification & reporting exists, `src/Solutions/{{solution_name}}/` is in sync with the environment, and every component the change touched is in this branch's feature solution.
 
 ## Git
 
@@ -93,6 +96,7 @@ Compiling is not done. A task is complete only when all of the following hold:
 - Commit messages describe the change and its motivation, not just the action (`fix`, `update` alone are not enough).
 - Prefer `gh` for PR creation, review and inspection over the web UI.
 - Branch naming: `<type>/<short-description>` (e.g. `fix/`, `feature/`, `chore/`).
+- One unit of work, one branch, one feature solution. Before starting anything, ask whether the work goes on the current branch or a new one, and derive the feature solution name from the branch: `docs/development/solutions-alm.md` owns that flow and its commands.
 
 ## Standards index
 
